@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boutique Maison</title>
+<style>
+body{font-family:Arial;margin:0;background:#fff0f6}
+header{background:#e84393;color:white;padding:20px;text-align:center}
+.container{max-width:1000px;margin:auto;padding:15px}
+.box{background:white;padding:15px;border-radius:16px;margin:10px 0;box-shadow:0 3px 8px rgba(0,0,0,.1)}
+.bigChoice{display:flex;gap:20px}
+.bigChoice div{flex:1;background:white;padding:60px;text-align:center;font-size:22px;border-radius:20px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.1)}
+button{background:#d63384;color:white;border:0;padding:12px 16px;border-radius:14px;cursor:pointer;font-weight:bold}
+button:hover{background:#bf2e75}
+input,textarea,select{width:100%;margin:6px 0;padding:8px;border:1px solid #ffcce3;border-radius:12px}
+.prod{border:1px solid #ffd6ea;padding:8px;margin:6px 0;border-radius:12px}
+</style>
+</head>
+<body>
+<header>
+<button onclick="logout()" style="position:absolute;left:10px">Se déconnecter</button>
+<h2>Ma boutique gourmande</h2>
+</header>
+
+<div class="container">
+
+<div id="home" class="bigChoice">
+ <div onclick="showAdmin()">🔐 ADMIN</div>
+ <div onclick="enterClient()">👤 CLIENT</div>
+</div>
+
+<div id="login" class="box" style="display:none">
+ <h3>Mot de passe admin</h3>
+ <input id="pwd" type="password"/>
+ <button onclick="login()">Entrer</button>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" style="display:none">
+
+ <div class="box">
+ <h3>Ajouter un article</h3>
+ <input id="aName" placeholder="Nom"/>
+ <input id="aPrice" placeholder="Prix"/>
+ <input id="aType" placeholder="Type : cookie / crêpe / gaufre..."/>
+ <textarea id="aExtras" placeholder="Suppléments ex: nutella:0.5, chantilly:1"></textarea>
+ <input id="aMax" placeholder="MAX suppléments"/>
+ <button onclick="addArticle()">Ajouter</button>
+ </div>
+
+ <div class="box">
+ <h3>Commandes</h3>
+ <div id="ordersList"></div>
+ <div id="orderDetail"></div>
+ </div>
+
+</div>
+
+<!-- CLIENT -->
+<div id="client" style="display:none">
+ <div class="box">
+ <h3>Produits</h3>
+ <div id="shop"></div>
+ </div>
+
+ <div class="box">
+ <h3>Panier</h3>
+ <div id="cart"></div>
+ <b>Total: <span id="total">0</span>€</b>
+ </div>
+
+ <div class="box">
+ <h3>Commander</h3>
+ <input id="cName" placeholder="Nom"/>
+ <input id="cMail" placeholder="Mail"/>
+ <input id="cDate" type="date"/>
+ <input id="cHour" type="time"/>
+ <button onclick="checkout()">Envoyer</button>
+ </div>
+</div>
+
+</div>
+
+<script>
+// helper
+function g(id){return document.getElementById(id)}
+function load(k){return JSON.parse(localStorage.getItem(k)||'[]')}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+
+const PASS="1234";
+
+function logout(){
+ g('home').style.display='flex';
+ g('admin').style.display='none';
+ g('client').style.display='none';
+ g('login').style.display='none';
+}
+
+function showAdmin(){
+ g('home').style.display='none';
+ g('login').style.display='block';
+}
+
+function login(){
+ if(g('pwd').value===PASS){
+  g('login').style.display='none';
+  g('admin').style.display='block';
+  renderOrders();
+ }
+}
+
+function enterClient(){
+ g('home').style.display='none';
+ g('client').style.display='block';
+ renderShop();
+ renderCart();
+}
+
+// PRODUITS
+function addArticle(){
+ const p=load('products');
+ p.push({
+  name:g('aName').value,
+  price:g('aPrice').value,
+  type:g('aType').value,
+  extras:g('aExtras').value,
+  max:g('aMax').value
+ });
+ save('products',p);
+ g('aName').value=g('aPrice').value=g('aType').value=g('aExtras').value=g('aMax').value='';
+}
+
+function renderShop(){
+ const p=load('products');
+ g('shop').innerHTML='';
+ p.forEach((x,i)=>{
+  g('shop').innerHTML+=`<div class='prod'><b>${x.name}</b> (${x.type})<br/>${x.price}€<br/>
+  <button onclick="addCart(${i})">Ajouter</button></div>`;
+ })
+}
+
+// PANIER
+function addCart(i){
+ const c=load('cart');
+ c.push(load('products')[i]);
+ save('cart',c);
+ renderCart();
+}
+
+function renderCart(){
+ const c=load('cart');
+ g('cart').innerHTML='';
+ let t=0;
+ c.forEach((x,i)=>{
+  t+=Number(x.price||0);
+  g('cart').innerHTML+=`<div>${x.name} ${x.price}€ <button onclick="delCart(${i})">X</button></div>`;
+ });
+ g('total').textContent=t;
+}
+
+function delCart(i){
+ const c=load('cart');
+ c.splice(i,1);
+ save('cart',c);
+ renderCart();
+}
+
+// COMMANDES
+function checkout(){
+ const c=load('cart');
+ if(!c.length)return alert('vide');
+ const o=load('orders');
+ o.push({
+  name:g('cName').value,
+  mail:g('cMail').value,
+  date:g('cDate').value,
+  heure:g('cHour').value,
+  items:c,
+  statut:'reçu'
+ });
+ save('orders',o);
+ save('cart',[]);
+ renderCart();
+ alert('envoyé');
+}
+
+function renderOrders(){
+ const o=load('orders');
+ g('ordersList').innerHTML='';
+ o.forEach((x,i)=>{
+  g('ordersList').innerHTML+=`<div class='prod' onclick="showOrder(${i})">${x.name}</div>`;
+ })
+}
+
+function showOrder(i){
+ const x=load('orders')[i];
+ g('orderDetail').innerHTML=`<div class='box'>
+ <b>${x.name}</b><br/>${x.mail}<br/>${x.date} ${x.heure}<br/>
+ ${x.items.map(v=>v.name).join(', ')}<br/>
+ Statut: <select onchange="setStatus(${i},this.value)">
+  ${['reçu','en cours','prêt'].map(s=>`<option ${s==x.statut?'selected':''}>${s}</option>`) }
+ </select></div>`;
+}
+
+function setStatus(i,v){
+ const o=load('orders');
+ o[i].statut=v;
+ save('orders',o);
+ renderOrders();
+}
+
+</script>
+</body>
+</html>
